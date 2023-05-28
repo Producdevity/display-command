@@ -1,26 +1,73 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+let statusBarItem: vscode.StatusBarItem | undefined;
+let lastCommand: string | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
+	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+	context.subscriptions.push(statusBarItem);
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "display-command" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('display-command.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Display Command!');
+	vscode.window.onDidChangeTextEditorSelection((event: vscode.TextEditorSelectionChangeEvent) => {
+		const { textEditor } = event;
+		if (textEditor && textEditor.selection.isEmpty) {
+			const commandName = getCommandNameFromSelection(textEditor);
+			if (commandName) {
+				lastCommand = commandName;
+				updateStatusBar();
+			}
+		}
 	});
 
-	context.subscriptions.push(disposable);
+	registerToggleCommand(context);
+	updateStatusBar();
+
+	// Listen for commands triggered by the user
+	context.subscriptions.push(vscode.commands.registerCommand('extension.showCommand', (commandName: string) => {
+		lastCommand = commandName;
+		updateStatusBar();
+	}));
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+function updateStatusBar() {
+	const commandName = lastCommand ? `Last Command: ${lastCommand}` : 'No Command';
+
+	vscode.window.showInformationMessage(`Display Command: ${commandName}`);
+
+	if (statusBarItem) {
+		statusBarItem.text = commandName;
+		statusBarItem.show();
+	}
+}
+
+function getCommandNameFromSelection(editor: vscode.TextEditor): string | undefined {
+	const { document, selection } = editor;
+	const selectedText = document.getText(selection);
+	if (selectedText.startsWith('command:')) {
+		const commandName = selectedText.slice(8);
+		return commandName;
+	}
+	return undefined;
+}
+
+function registerToggleCommand(context: vscode.ExtensionContext) {
+	const toggleCommand = vscode.commands.registerCommand('_extension.toggleDisplayCommand', () => {
+		if (statusBarItem) {
+			statusBarItem.dispose();
+			statusBarItem = undefined;
+			vscode.window.showInformationMessage('Display Command: Disabled');
+		} else {
+			statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+			updateStatusBar();
+			context.subscriptions.push(statusBarItem);
+			vscode.window.showInformationMessage('Display Command: Enabled');
+		}
+	});
+
+	context.subscriptions.push(toggleCommand);
+}
+
+export function deactivate() {
+	if (statusBarItem) {
+		statusBarItem.dispose();
+	}
+}

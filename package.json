@@ -14,8 +14,12 @@
   "contributes": {
     "commands": [
       {
-        "command": "display-command.helloWorld",
-        "title": "Hello World"
+        "command": "_extension.toggleDisplayCommand",
+        "title": "Toggle Display Command in Status Bar"
+      },
+      {
+        "command": "extension.showCommand",
+        "title": "Show Command"
       }
     ]
   },
